@@ -11,11 +11,12 @@ export function LoginScreen() {
   const { setSession, hosts } = useAuthStore();
   const [token, setToken] = useState('');
   const [selectedHostId, setSelectedHostId] = useState('github.com');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [isTokenLoading, setIsTokenLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const authenticateWithToken = async (oauthToken: string) => {
-    setIsLoading(true);
+    setIsOAuthLoading(true);
     setError(null);
 
     try {
@@ -37,7 +38,7 @@ export function LoginScreen() {
     } catch (err: any) {
       setError(err.message || 'Failed to authenticate with GitHub.');
     } finally {
-      setIsLoading(false);
+      setIsOAuthLoading(false);
     }
   };
 
@@ -76,7 +77,7 @@ export function LoginScreen() {
   }, [setSession]);
 
   const handleOAuthLogin = async () => {
-    setIsLoading(true);
+    setIsOAuthLoading(true);
     setError(null);
 
     try {
@@ -107,7 +108,7 @@ export function LoginScreen() {
       }
     } catch (err: any) {
       setError(err.message || 'Failed to initiate GitHub OAuth.');
-      setIsLoading(false);
+      setIsOAuthLoading(false);
     }
   };
 
@@ -115,7 +116,7 @@ export function LoginScreen() {
     e.preventDefault();
     if (!token) return;
 
-    setIsLoading(true);
+    setIsTokenLoading(true);
     setError(null);
 
     try {
@@ -141,7 +142,7 @@ export function LoginScreen() {
     } catch (err: any) {
       setError(err.message || 'Failed to authenticate. Check your token and host.');
     } finally {
-      setIsLoading(false);
+      setIsTokenLoading(false);
     }
   };
 
@@ -164,11 +165,12 @@ export function LoginScreen() {
 
           <div className="space-y-6">
             <button
+              type="button"
               onClick={handleOAuthLogin}
-              disabled={isLoading}
+              disabled={isOAuthLoading || isTokenLoading}
               className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
             >
-              {isLoading ? (
+              {isOAuthLoading ? (
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
@@ -232,10 +234,10 @@ export function LoginScreen() {
 
             <button
               type="submit"
-              disabled={isLoading || !token}
+              disabled={isOAuthLoading || isTokenLoading || !token}
               className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
             >
-              {isLoading ? (
+              {isTokenLoading ? (
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
