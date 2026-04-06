@@ -1,0 +1,8 @@
+{
+  "name": "GitMobile",
+  "description": "A polished, mobile-first GitHub client for managing repositories, issues, pull requests, and notifications.",
+  "requestFramePermissions": [
+    "geolocation",
+    "notifications"
+  ]
+}
