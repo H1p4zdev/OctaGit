@@ -83,7 +83,9 @@ export function LoginScreen() {
       const isNative = Capacitor.isNativePlatform();
       const platformParam = isNative ? 'mobile' : 'web';
       
-      const response = await fetch(`/api/auth/github/url?platform=${platformParam}`);
+      // Use absolute URL for native platforms, relative for web
+      const baseUrl = isNative ? (process.env.APP_URL || '') : '';
+      const response = await fetch(`${baseUrl}/api/auth/github/url?platform=${platformParam}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to get auth URL');
