@@ -54,7 +54,7 @@ export function LoginScreen() {
   };
 
   const pollForToken = async (deviceCode: string, interval: number) => {
-    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientId = process.env.CLIENT_ID;
     if (!clientId) return;
 
     const pollInterval = setInterval(async () => {
@@ -111,9 +111,9 @@ export function LoginScreen() {
   };
 
   const handleDeviceFlowLogin = async () => {
-    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientId = process.env.CLIENT_ID;
     if (!clientId) {
-      setError('GITHUB_CLIENT_ID is not configured in the app.');
+      setError('CLIENT_ID is not configured in the app.');
       return;
     }
 
@@ -191,29 +191,31 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col p-6">
-      <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
+    <div className="min-h-screen liquid-bg flex flex-col p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full relative z-10">
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200 border border-slate-100"
+          className="glass p-10 rounded-[3rem] border border-white/40 shadow-2xl relative overflow-hidden"
         >
-          <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-            <Github className="w-10 h-10 text-white" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 blur-[80px] rounded-full -mr-20 -mt-20" />
+          
+          <div className="w-20 h-20 glass rounded-3xl flex items-center justify-center mb-8 mx-auto border border-white/60 shadow-lg">
+            <Github className="w-12 h-12 text-slate-900" />
           </div>
           
-          <h1 className="text-2xl font-bold text-center mb-2">Sign in to GitHub</h1>
-          <p className="text-slate-500 text-center mb-8 text-sm">
-            Connect with your GitHub account or use a Personal Access Token.
+          <h1 className="text-4xl font-black text-center mb-2 tracking-tight text-slate-900">OctaGit</h1>
+          <p className="text-slate-500 text-center mb-10 text-sm font-medium px-4">
+            The premium mobile experience for GitHub.
           </p>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {!deviceFlowData ? (
               <button
                 type="button"
                 onClick={handleDeviceFlowLogin}
                 disabled={isOAuthLoading || isTokenLoading}
-                className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
+                className="w-full py-5 bg-slate-900 text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-slate-200 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95 hover:bg-slate-800"
               >
                 {isOAuthLoading ? (
                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -225,50 +227,53 @@ export function LoginScreen() {
                 )}
               </button>
             ) : (
-              <div className="p-6 bg-blue-50 border border-blue-100 rounded-2xl text-center space-y-4">
-                <p className="text-sm font-medium text-blue-800">Enter this code on GitHub:</p>
-                <div className="text-3xl font-black tracking-widest text-blue-600 font-mono">
+              <div className="p-8 glass border border-blue-100 rounded-[2rem] text-center space-y-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
+                <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Activation Code</p>
+                <div className="text-4xl font-black tracking-[0.2em] text-slate-900 font-mono">
                   {deviceFlowData.user_code}
                 </div>
-                <button
-                  onClick={() => Browser.open({ url: deviceFlowData.verification_uri })}
-                  className="text-xs font-bold text-blue-600 underline uppercase tracking-wider"
-                >
-                  Open GitHub Activation
-                </button>
-                <div className="flex items-center justify-center space-x-2 text-blue-400">
-                  <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                  <span className="text-xs">Waiting for authorization...</span>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => Browser.open({ url: deviceFlowData.verification_uri })}
+                    className="w-full py-3 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100"
+                  >
+                    Open Activation Page
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDeviceFlowData(null);
+                      setIsOAuthLoading(false);
+                    }}
+                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+                  >
+                    Cancel Request
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setDeviceFlowData(null);
-                    setIsOAuthLoading(false);
-                  }}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
-                  Cancel
-                </button>
+                <div className="flex items-center justify-center space-x-3 text-blue-500">
+                  <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Waiting...</span>
+                </div>
               </div>
             )}
 
             <div className="relative flex items-center py-2">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">Or use token</span>
-              <div className="flex-grow border-t border-slate-200"></div>
+              <div className="flex-grow border-t border-slate-200/60"></div>
+              <span className="flex-shrink mx-6 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Or Token</span>
+              <div className="flex-grow border-t border-slate-200/60"></div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
-                Host
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                Select Host
               </label>
               <div className="relative">
                 <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <select
                   value={selectedHostId}
                   onChange={(e) => setSelectedHostId(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none font-medium"
+                  className="w-full pl-12 pr-4 py-4 glass border border-white/60 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none font-bold text-slate-700 text-sm"
                 >
                   {hosts.map(h => (
                     <option key={h.id} value={h.id}>{h.name}</option>
@@ -277,8 +282,8 @@ export function LoginScreen() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                 Personal Access Token
               </label>
               <div className="relative">
@@ -288,7 +293,7 @@ export function LoginScreen() {
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   placeholder="ghp_xxxxxxxxxxxx"
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  className="w-full pl-12 pr-4 py-4 glass border border-white/60 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono text-sm text-slate-700"
                 />
               </div>
             </div>
@@ -300,17 +305,17 @@ export function LoginScreen() {
                 className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start space-x-3"
               >
                 <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-600 font-medium">{error}</p>
+                <p className="text-xs text-red-600 font-bold">{error}</p>
               </motion.div>
             )}
 
             <button
               type="submit"
               disabled={isOAuthLoading || isTokenLoading || !token}
-              className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
+              className="w-full py-5 glass border border-white/60 text-slate-900 font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-slate-100 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95 hover:bg-white/80"
             >
               {isTokenLoading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
               ) : (
                 <>
                   <span>Sign In</span>
@@ -322,8 +327,8 @@ export function LoginScreen() {
         </div>
       </motion.div>
 
-        <p className="mt-8 text-center text-slate-400 text-xs px-8 leading-relaxed">
-          By signing in, you agree to connect your GitHub account. We only store your token locally on this device.
+        <p className="mt-10 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest px-12 leading-relaxed opacity-60">
+          Securely connected to GitHub API. Your data remains private.
         </p>
       </div>
     </div>

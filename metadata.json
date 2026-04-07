@@ -1,6 +1,6 @@
 {
-  "name": "GitMobile",
-  "description": "A polished, mobile-first GitHub client for managing repositories, issues, pull requests, and notifications.",
+  "name": "OctaGit",
+  "description": "A premium, mobile-first GitHub client with a liquid glass interface for managing repositories, code, and more.",
   "requestFramePermissions": [
     "geolocation",
     "notifications"

@@ -26,9 +26,9 @@ const getBaseUrl = (req: express.Request) => {
 
 // GitHub OAuth URL Endpoint
 app.get('/api/auth/github/url', (req, res) => {
-  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientId = process.env.CLIENT_ID;
   if (!clientId) {
-    return res.status(500).json({ error: 'GITHUB_CLIENT_ID is not configured' });
+    return res.status(500).json({ error: 'CLIENT_ID is not configured' });
   }
 
   const platform = req.query.platform || 'web';
@@ -95,8 +95,8 @@ app.get(['/auth/github/callback', '/auth/github/callback/'], async (req, res) =>
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
         code,
         redirect_uri: `${appUrl}/auth/github/callback`,
       }),
