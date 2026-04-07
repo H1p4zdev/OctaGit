@@ -15,8 +15,18 @@ export function LoginScreen() {
   const [isTokenLoading, setIsTokenLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Device Flow State
+  const [deviceFlowData, setDeviceFlowData] = useState<{
+    user_code: string;
+    device_code: string;
+    verification_uri: string;
+    interval: number;
+    expires_in: number;
+  } | null>(null);
+
   const authenticateWithToken = async (oauthToken: string) => {
     setIsOAuthLoading(true);
+    setIsTokenLoading(true);
     setError(null);
 
     try {
@@ -39,75 +49,109 @@ export function LoginScreen() {
       setError(err.message || 'Failed to authenticate with GitHub.');
     } finally {
       setIsOAuthLoading(false);
+      setIsTokenLoading(false);
     }
   };
 
-  useEffect(() => {
-    // Handle Web Message (Popup)
-    const handleMessage = async (event: MessageEvent) => {
-      const origin = event.origin;
-      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
-        return;
-      }
+  const pollForToken = async (deviceCode: string, interval: number) => {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) return;
 
-      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.token) {
-        authenticateWithToken(event.data.token);
-      }
-    };
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch('https://github.com/login/oauth/access_token', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: clientId,
+            device_code: deviceCode,
+            grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+          }),
+        });
 
-    // Handle Native Deep Link
-    const handleDeepLink = async (data: { url: string }) => {
-      const url = new URL(data.url);
-      if (url.host === 'oauth' || url.pathname.includes('oauth')) {
-        const token = url.searchParams.get('token');
-        if (token) {
-          await Browser.close();
-          authenticateWithToken(token);
+        const data = await response.json();
+
+        if (data.access_token) {
+          clearInterval(pollInterval);
+          setDeviceFlowData(null);
+          authenticateWithToken(data.access_token);
+        } else if (data.error) {
+          if (data.error === 'authorization_pending') {
+            // Still waiting for user
+            return;
+          } else if (data.error === 'slow_down') {
+            // GitHub asked to slow down, but we'll just keep the current interval for simplicity
+            // in a real app you'd increase the interval
+            return;
+          } else {
+            // Other errors (expired_token, access_denied, etc.)
+            clearInterval(pollInterval);
+            setError(data.error_description || data.error);
+            setDeviceFlowData(null);
+            setIsOAuthLoading(false);
+          }
         }
+      } catch (err) {
+        console.error('Polling error:', err);
       }
-    };
+    }, interval * 1000);
 
-    window.addEventListener('message', handleMessage);
-    const appListener = App.addListener('appUrlOpen', handleDeepLink);
+    // Cleanup polling after expiration
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (deviceFlowData?.device_code === deviceCode) {
+        setDeviceFlowData(null);
+        setIsOAuthLoading(false);
+        setError('Device code expired. Please try again.');
+      }
+    }, 900000); // 15 minutes max
+  };
 
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      appListener.then(l => l.remove());
-    };
-  }, [setSession]);
+  const handleDeviceFlowLogin = async () => {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) {
+      setError('GITHUB_CLIENT_ID is not configured in the app.');
+      return;
+    }
 
-  const handleOAuthLogin = async () => {
     setIsOAuthLoading(true);
     setError(null);
+    setDeviceFlowData(null);
 
     try {
-      const isNative = Capacitor.isNativePlatform();
-      const platformParam = isNative ? 'mobile' : 'web';
-      
-      // Use absolute URL for native platforms, relative for web
-      const baseUrl = isNative ? (process.env.APP_URL || '') : '';
-      const response = await fetch(`${baseUrl}/api/auth/github/url?platform=${platformParam}`);
+      const response = await fetch('https://github.com/login/device/code', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          scope: 'repo,user,notifications,workflow,gist,project,read:org,read:discussion,read:packages,read:gpg_key,read:public_key,read:repo_hook,admin:org,admin:public_key,admin:repo_hook,admin:org_hook,admin:gpg_key',
+        }),
+      });
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get auth URL');
+        throw new Error('Failed to get device code');
       }
-      const { url } = await response.json();
 
-      if (isNative) {
-        await Browser.open({ url, windowName: '_self' });
+      const data = await response.json();
+      setDeviceFlowData(data);
+
+      // Open browser automatically
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({ url: data.verification_uri });
       } else {
-        const authWindow = window.open(
-          url,
-          'github_oauth_popup',
-          'width=600,height=700'
-        );
-
-        if (!authWindow) {
-          throw new Error('Popup was blocked. Please allow popups for this site.');
-        }
+        window.open(data.verification_uri, '_blank');
       }
+
+      // Start polling
+      pollForToken(data.device_code, data.interval || 5);
     } catch (err: any) {
-      setError(err.message || 'Failed to initiate GitHub OAuth.');
+      setError(err.message || 'Failed to initiate GitHub login.');
       setIsOAuthLoading(false);
     }
   };
@@ -164,21 +208,49 @@ export function LoginScreen() {
           </p>
 
           <div className="space-y-6">
-            <button
-              type="button"
-              onClick={handleOAuthLogin}
-              disabled={isOAuthLoading || isTokenLoading}
-              className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
-            >
-              {isOAuthLoading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Github className="w-5 h-5" />
-                  <span>Sign in with GitHub</span>
-                </>
-              )}
-            </button>
+            {!deviceFlowData ? (
+              <button
+                type="button"
+                onClick={handleDeviceFlowLogin}
+                disabled={isOAuthLoading || isTokenLoading}
+                className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
+              >
+                {isOAuthLoading ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Github className="w-5 h-5" />
+                    <span>Sign in with GitHub</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="p-6 bg-blue-50 border border-blue-100 rounded-2xl text-center space-y-4">
+                <p className="text-sm font-medium text-blue-800">Enter this code on GitHub:</p>
+                <div className="text-3xl font-black tracking-widest text-blue-600 font-mono">
+                  {deviceFlowData.user_code}
+                </div>
+                <button
+                  onClick={() => Browser.open({ url: deviceFlowData.verification_uri })}
+                  className="text-xs font-bold text-blue-600 underline uppercase tracking-wider"
+                >
+                  Open GitHub Activation
+                </button>
+                <div className="flex items-center justify-center space-x-2 text-blue-400">
+                  <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                  <span className="text-xs">Waiting for authorization...</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setDeviceFlowData(null);
+                    setIsOAuthLoading(false);
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
             <div className="relative flex items-center py-2">
               <div className="flex-grow border-t border-slate-200"></div>

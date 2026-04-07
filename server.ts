@@ -13,6 +13,17 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Helper to get the base URL of the application
+const getBaseUrl = (req: express.Request) => {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/$/, '');
+  }
+  // Fallback for Vercel/Cloud Run if APP_URL is missing
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const host = req.headers.host;
+  return `${protocol}://${host}`;
+};
+
 // GitHub OAuth URL Endpoint
 app.get('/api/auth/github/url', (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
@@ -21,8 +32,10 @@ app.get('/api/auth/github/url', (req, res) => {
   }
 
   const platform = req.query.platform || 'web';
-  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+  const appUrl = getBaseUrl(req);
   const redirectUri = `${appUrl}/auth/github/callback`;
+  
+  console.log(`[OAuth] Generated Redirect URI: ${redirectUri}`);
   const scopes = [
     'repo',
     'user',
@@ -74,7 +87,7 @@ app.get(['/auth/github/callback', '/auth/github/callback/'], async (req, res) =>
   }
 
   try {
-    const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+    const appUrl = getBaseUrl(req);
     const response = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
