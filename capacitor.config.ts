@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.gitmobile.app',
-  appName: 'GitMobile',
+  appId: 'com.octagit.app',
+  appName: 'OctaGit',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

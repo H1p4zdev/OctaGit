@@ -26,6 +26,9 @@ jobs:
 
       - name: Build web app
         run: npm run build
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -50,9 +53,19 @@ jobs:
         run: |
           cd android
           ./gradlew assembleDebug
+          mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/OctaGit-debug.apk
+
+      - name: Send APK to Telegram
+        run: |
+          curl -F document=@"android/app/build/outputs/apk/debug/OctaGit-debug.apk" \
+               -F caption="✅ OctaGit Debug APK Build Successful!" \
+               https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/OctaGit-debug.apk
